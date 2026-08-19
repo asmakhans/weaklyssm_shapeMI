@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 """Compute Grassmannian distance between two ShapeWorks PCA subspaces.
-
-This command is a path-agnostic replacement for the hardcoded Grassmannian
-analysis cells that were previously embedded in settingI.ipynb/settingII.ipynb.
-It compares local particle correspondences from two SSMs and saves both the raw
+Compares local particle correspondences from two SSMs and saves both the raw
 Grassmannian distance and the log-normalized value used by the analysis
 notebooks/paper figures.
 """
