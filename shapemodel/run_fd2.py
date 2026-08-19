@@ -10,7 +10,7 @@ This is the second ShapeWorks stage used in both experimental strategies:
   the held-out test set.
 
 The fixed training particles are used to initialize/anchor optimization of the
-new test subjects. No machine-specific paths are embedded in this script.
+new test subjects.
 """
 
 from __future__ import annotations
