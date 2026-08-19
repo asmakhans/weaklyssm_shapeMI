@@ -1,5 +1,5 @@
 # Install ShapeWorks v6.5.1 separately using the official ShapeWorks installation.
-# These are additional Python dependencies used by the canonical utilities.
+# These are additional Python dependencies
 numpy
 joblib
 tqdm
