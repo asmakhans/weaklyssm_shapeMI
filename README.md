@@ -405,6 +405,8 @@ If you use this benchmark, please cite the accompanying paper:
 
 Please also cite the original publication/codebase for each semi-supervised method you use. The method-specific READMEs contain the relevant upstream information where available.
 
+Disclaimer: README for this repository was formatted with the help of ChatGPT.
+
 ## License
 
 The top-level repository license is provided in `LICENSE` (GNU GPL v3 in this release). Some imported method folders also contain their own upstream license files. Users and redistributors are responsible for complying with the applicable upstream licenses and attribution requirements for third-party code.
