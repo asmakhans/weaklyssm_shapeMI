@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Backward-compatible entry point for training SSM construction.
-
-This legacy filename now delegates to ``run_fd.py`` so path handling and
+path handling and
 ShapeWorks parameters are maintained in one place.
 """
 
