@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Entry point for training SSM construction.
-path handling and ShapeWorks parameters are maintained in one place.
+path handling and ShapeWorks parameters
 """
 
 from run_fd import main
