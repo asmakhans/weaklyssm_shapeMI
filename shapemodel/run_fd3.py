@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""Backward-compatible entry point for fixed-domain SSM construction.
-
-The previous version depended on a locally generated spreadsheet containing
-absolute paths. The public-release version delegates to ``run_fd2.py``, which
+"""Entry point for fixed-domain SSM construction: ``run_fd2.py``, which
 reconstructs the required project from ``--train-dir`` and ``--test-dir``.
 """
 
