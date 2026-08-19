@@ -5,9 +5,6 @@ The script expects the directory layout created by ``run_fd.py`` and
 ``run_fd2.py`` and computes compactness, specificity, test generalization, and
 training reconstruction error. The resulting ``stats_new.npz`` is compatible
 with the original analysis notebooks.
-
-All filesystem locations are supplied through command-line arguments or derived
-from ``--root``/``--train-root``. No machine-specific paths are embedded in this file.
 """
 
 from __future__ import annotations
