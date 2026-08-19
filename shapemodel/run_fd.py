@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Build a ShapeWorks training statistical shape model from segmentations.
 
-This script is the first ShapeWorks stage used by both paper strategies. It is
-path-agnostic: all input/output locations are derived from ``--train-dir``.
+This script is the first ShapeWorks stage used by both paper strategies I and II. All input/output locations are derived from ``--train-dir``.
 
 Expected input
 --------------
