@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Convert HDF5 image/label pairs to NIfTI without machine-specific paths."""
 
 from __future__ import annotations
 
