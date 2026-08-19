@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Backward-compatible entry point for training SSM construction.
+"""Entry point for training SSM construction.
 
-Use ``--particles 256`` or ``--particles 1024`` with the same arguments as
+Use ``--particles 256`` or ``--particles 1024`` with the same arguments to match the file:
 ``run_fd.py``.
 """
 
