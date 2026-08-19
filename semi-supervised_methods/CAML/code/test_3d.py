@@ -8,7 +8,7 @@ from utils.test_patch import test_all_case
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset_name', type=str, default='namic', help='dataset_name')
-parser.add_argument('--root_path', type=str, default='/CAML/', help='Name of Experiment')
+parser.add_argument('--root_path', type=str, required=True, help='Name of Experiment')
 parser.add_argument('--exp', type=str, default='CAML', help='exp_name')
 parser.add_argument('--model', type=str, default='caml3d_v1', help='model_name')
 parser.add_argument('--max_iteration', type=int, default=15000, help='maximum iteration to train')

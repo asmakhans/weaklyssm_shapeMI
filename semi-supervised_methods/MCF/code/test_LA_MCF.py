@@ -6,7 +6,7 @@ from networks.ResNet34 import Resnet34
 from test_util import test_all_case
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--root_path', type=str, default='dataset_path', help='Name of Experiment')  # todo change dataset path
+parser.add_argument('--root_path', type=str, required=True, help='Name of Experiment')  # todo change dataset path
 parser.add_argument('--model', type=str,  default="MCF_flod0", help='model_name')                # todo change test model name
 parser.add_argument('--gpu', type=str,  default='0', help='GPU to use')
 FLAGS = parser.parse_args()

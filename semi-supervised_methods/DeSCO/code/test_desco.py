@@ -13,6 +13,8 @@ parser.add_argument('--max_iteration', type=int,  default=6000, help='GPU to use
 parser.add_argument('--iteration_step', type=int,  default=2000, help='GPU to use')
 parser.add_argument('--split', type=str,  default='test', help='testlist to use')
 parser.add_argument('--min_iteration', type=int,  default=6000, help='GPU to use')
+parser.add_argument('--data_root', type=str, required=True, help='Directory containing test HDF5 files')
+parser.add_argument('--split_file', type=str, required=True, help='Text file listing test case IDs')
 FLAGS = parser.parse_args()
 
 os.environ['CUDA_VISIBLE_DEVICES'] = FLAGS.gpu
@@ -23,22 +25,11 @@ if not os.path.exists(test_save_path):
     os.makedirs(test_save_path)
 
 num_classes = 2
-if FLAGS.dataset=='la':
-    with open('../data/'+FLAGS.split+'_la.txt', 'r') as f:
-        image_list = f.readlines()
-    image_list = ['../data/LA/'+item.replace('\n', '').split(",")[0]+'.h5' for item in image_list]
-elif FLAGS.dataset=='kits_kidney':
-    with open('../data/KiTS/../'+FLAGS.split+'_kits.txt', 'r') as f:
-       image_list = f.readlines()
-    image_list = ['../data/KiTS/'+item.replace('\n', '').split(",")[0]+'.h5' for item in image_list]
-elif FLAGS.dataset=='lits_liver':
-    with open('../data/'+FLAGS.split+'_lits.txt', 'r') as f:
-       image_list = f.readlines()
-    image_list = ['../data/LiTS/'+item.replace('\n', '').split(",")[0]+'.h5' for item in image_list]
-elif FLAGS.dataset=='effe':
-    with open('../data/'+FLAGS.split+'_la.txt', 'r') as f:
-        image_list = f.readlines()
-    image_list = ['../data/LA/'+item.replace('\n', '').split(",")[0]+'.h5' for item in image_list]
+data_root = os.path.abspath(os.path.expanduser(FLAGS.data_root))
+split_file = os.path.abspath(os.path.expanduser(FLAGS.split_file))
+with open(split_file, 'r') as f:
+    cases = [line.strip().split(',')[0] for line in f if line.strip()]
+image_list = [os.path.join(data_root, case + '.h5') for case in cases]
 
 
 def test_calculate_metric(epoch_num):

@@ -8,7 +8,7 @@ from networks.net_factory import net_factory
 from utils.test_3d_patch import test_all_case
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--root_path', type=str, default='/home/sci/asmak/Documents/Methods/BCP/data_split/femur', help='Name of Experiment')
+parser.add_argument('--root_path', type=str, required=True, help='Name of Experiment')
 parser.add_argument('--exp', type=str,  default='BCP', help='exp_name')
 parser.add_argument('--model', type=str,  default='VNet', help='model_name')
 parser.add_argument('--gpu', type=str,  default='0', help='GPU to use')

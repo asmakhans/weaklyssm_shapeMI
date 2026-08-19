@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import torch
 import h5py
@@ -101,15 +102,17 @@ class ToTensor(object):
         return [torch.from_numpy(s.astype(np.float32)) for s in sample]
     
 
-def get_dataset_path(dataset='pancreas', labelp='10percent'):
+def get_dataset_path(dataset='pancreas', labelp='10percent', data_list_root=None):
+    if data_list_root is None:
+        raise ValueError('data_list_root must be provided')
     files = ['train_lab.txt', 'train_unlab.txt', 'test.txt']
-    return ['/'.join(['/home/ubuntu/byh/code/CoraNet-master/data_lists', dataset, labelp, f]) for f in files]
+    return [os.path.join(data_list_root, dataset, labelp, f) for f in files]
 
 
 
 class Pancreas(Dataset):
     """ Pancreas Dataset """
-    def __init__(self, base_dir, name, split, no_crop=False, labelp=10, reverse=False, TTA=False):
+    def __init__(self, base_dir, name, split, no_crop=False, labelp=10, reverse=False, TTA=False, data_list_root=None):
         self._base_dir = base_dir
         self.split = split
         self.reverse=reverse
@@ -135,7 +138,7 @@ class Pancreas(Dataset):
                 ToTensor()
             ])
 
-        data_list_paths = get_dataset_path(name, self.labelp)
+        data_list_paths = get_dataset_path(name, self.labelp, data_list_root=data_list_root)
 
         if split == 'train_lab':
             data_path = data_list_paths[0]
@@ -174,25 +177,25 @@ class Pancreas(Dataset):
         return image_.float(), label_.long()
 
 
-def get_ema_model_and_dataloader(data_root, split_name, batch_size, lr, labelp=10):
+def get_ema_model_and_dataloader(data_root, split_name, batch_size, lr, labelp=10, data_list_root=None):
     print("Initialize ema cutmix: network, optimizer and datasets...")
     """Net & optimizer"""
     net = create_Vnet()
     ema_net = create_Vnet(ema=True).cuda()
     optimizer = optim.Adam(net.parameters(), lr=lr)
 
-    trainset_lab_a = Pancreas(data_root, split_name, split='train_lab', labelp=labelp)
+    trainset_lab_a = Pancreas(data_root, split_name, split='train_lab', labelp=labelp, data_list_root=data_list_root)
     lab_loader_a = DataLoader(trainset_lab_a, batch_size=batch_size, shuffle=False, num_workers=0, drop_last=True)
 
-    trainset_lab_b = Pancreas(data_root, split_name, split='train_lab', labelp=labelp, reverse=True)
+    trainset_lab_b = Pancreas(data_root, split_name, split='train_lab', labelp=labelp, reverse=True, data_list_root=data_list_root)
     lab_loader_b = DataLoader(trainset_lab_b, batch_size=batch_size, shuffle=False, num_workers=0, drop_last=True)
     
-    trainset_unlab_a = Pancreas(data_root, split_name, split='train_unlab', labelp=labelp)
+    trainset_unlab_a = Pancreas(data_root, split_name, split='train_unlab', labelp=labelp, data_list_root=data_list_root)
     unlab_loader_a = DataLoader(trainset_unlab_a, batch_size=batch_size, shuffle=False, num_workers=0, drop_last=True)
 
-    trainset_unlab_b = Pancreas(data_root, split_name, split='train_unlab', labelp=labelp, reverse=True)
+    trainset_unlab_b = Pancreas(data_root, split_name, split='train_unlab', labelp=labelp, reverse=True, data_list_root=data_list_root)
     unlab_loader_b = DataLoader(trainset_unlab_b, batch_size=batch_size, shuffle=False, num_workers=0, drop_last=True)
     
-    testset = Pancreas(data_root, split_name, split='test')
+    testset = Pancreas(data_root, split_name, split='test', data_list_root=data_list_root)
     test_loader = DataLoader(testset, batch_size=1, shuffle=False, num_workers=0)
     return net, ema_net, optimizer, lab_loader_a, lab_loader_b, unlab_loader_a, unlab_loader_b, test_loader

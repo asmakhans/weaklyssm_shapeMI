@@ -6,7 +6,7 @@ from test_util import test_all_case
 import glob
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--root_path', type=str, default='data/', help='Name of Experiment')
+parser.add_argument('--root_path', type=str, required=True, help='Name of Experiment')
 parser.add_argument('--model', type=str,  default='model_name', help='model_name')
 parser.add_argument('--dataset', type=str,  default='knee', help='dataset to use')
 parser.add_argument('--gpu', type=str,  default='0', help='GPU to use')

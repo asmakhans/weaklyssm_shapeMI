@@ -5,7 +5,7 @@ from networks.vnet_sdf import VNet
 from test_util import test_all_case
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--root_path', type=str, default='../data/namic/', help='Name of Experiment')
+parser.add_argument('--root_path', type=str, required=True, help='Name of Experiment')
 parser.add_argument('--model', type=str,  default='namic_20_percent', help='model_name')
 parser.add_argument('--gpu', type=str,  default='0', help='GPU to use')
 parser.add_argument('--iter', type=int,  default=6000, help='model iteration')

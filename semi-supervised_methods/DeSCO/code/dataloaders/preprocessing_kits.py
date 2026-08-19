@@ -1,3 +1,5 @@
+import argparse
+from pathlib import Path
 import nibabel as nib
 import numpy as np
 import matplotlib.pyplot as plt
@@ -171,17 +173,40 @@ def space_resampling(roiImg, new_spacing, lbl=False):
 
 
 
-loadPath = "../data/KiTS19/raw/"
-savePath = "../data/KiTS19/processed_" + v + "_h5/"
-if not os.path.exists(savePath):
-    os.makedirs(savePath)
+def parse_args():
+    parser = argparse.ArgumentParser(description="Preprocess KiTS19 volumes into HDF5 files.")
+    parser.add_argument(
+        "--load-path",
+        type=Path,
+        required=True,
+        help="KiTS19 raw-data directory containing case_XXXXX subdirectories.",
+    )
+    parser.add_argument(
+        "--save-path",
+        type=Path,
+        required=True,
+        help="Directory where processed HDF5 files will be written.",
+    )
+    parser.add_argument(
+        "--num-cases",
+        type=int,
+        default=210,
+        help="Number of sequential KiTS case_XXXXX folders to process (default: 210).",
+    )
+    return parser.parse_args()
+
 
 if __name__ == "__main__":
-    fileList = os.listdir(loadPath)
-    for i in range(210):
-        subpath = "case_" + str(i).zfill(5)
-        ct = sitk.ReadImage(loadPath + subpath + "/imaging.nii.gz")
-        lbl = sitk.ReadImage(loadPath + subpath + "/segmentation.nii.gz")
+    args = parse_args()
+    load_path = args.load_path.expanduser().resolve()
+    save_path = args.save_path.expanduser().resolve()
+    save_path.mkdir(parents=True, exist_ok=True)
+
+    for case_index in range(args.num_cases):
+        subpath = "case_" + str(case_index).zfill(5)
+        case_dir = load_path / subpath
+        ct = sitk.ReadImage(str(case_dir / "imaging.nii.gz"))
+        lbl = sitk.ReadImage(str(case_dir / "segmentation.nii.gz"))
         ct_array = sitk.GetArrayFromImage(ct)
         lbl_array = sitk.GetArrayFromImage(lbl)
         ct_array = ct_array.swapaxes(0, 2)
@@ -189,21 +214,25 @@ if __name__ == "__main__":
         new_ct_array = ct_array
         new_lbl_array = lbl_array
 
-        if CFG.do_windowing:    # ct
+        if CFG.do_windowing:
             new_ct_array = transform_ctdata(new_ct_array, CFG.window_width, CFG.window_center, True)
 
-        if CFG.do_background_cropping:      # ct
+        if CFG.do_background_cropping:
             mask = np.zeros(new_ct_array.shape)
-            for i in range(new_ct_array.shape[0]):
-                mask[i], new_ct_array[i] = image_background_segmentation(new_ct_array[i], WW=CFG.cropping_center, WL=CFG.cropping_width, display=False)
+            for slice_index in range(new_ct_array.shape[0]):
+                mask[slice_index], new_ct_array[slice_index] = image_background_segmentation(
+                    new_ct_array[slice_index], WW=CFG.cropping_center, WL=CFG.cropping_width, display=False
+                )
 
-        if CFG.do_cropping:         # ct, lbl
+        if CFG.do_cropping:
             new_ct_array = crop(mask, new_ct_array)
             new_lbl_array = crop(mask, new_lbl_array)
 
-        if CFG.do_mask_cropping:        # ct, lbl
-            startpostion, endpostion = getRangImageDepth(new_lbl_array)  # (75, 512, 512), 45, 73
-            new_ct_array, new_lbl_array = make_patch(new_ct_array, new_lbl_array, startpostion=startpostion, endpostion=endpostion)
+        if CFG.do_mask_cropping:
+            startpostion, endpostion = getRangImageDepth(new_lbl_array)
+            new_ct_array, new_lbl_array = make_patch(
+                new_ct_array, new_lbl_array, startpostion=startpostion, endpostion=endpostion
+            )
 
         new_ct = sitk.GetImageFromArray(new_ct_array)
         new_ct.SetOrigin(ct.GetOrigin())
@@ -220,16 +249,9 @@ if __name__ == "__main__":
         elif CFG.do_reshape:
             new_ct = resampling(new_ct, CFG.new_size, lbl=False)
             new_lbl = resampling(new_lbl, CFG.new_size, lbl=True)
+
         save_ct_array = sitk.GetArrayFromImage(new_ct)
         save_lbl_array = sitk.GetArrayFromImage(new_lbl)
-
-        # output shape
-        img_shape = save_ct_array.shape
-        lbl_shape = save_lbl_array.shape
-
-        # save
-        save_file = h5py.File(savePath + subpath + ".h5", 'w')
-        save_file.create_dataset('image', data=save_ct_array)
-        save_file.create_dataset('label', data=save_lbl_array)
-        save_file.close()
-
+        with h5py.File(save_path / f"{subpath}.h5", "w") as save_file:
+            save_file.create_dataset("image", data=save_ct_array)
+            save_file.create_dataset("label", data=save_lbl_array)

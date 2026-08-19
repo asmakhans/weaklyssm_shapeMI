@@ -12,7 +12,7 @@ import pdb
 
 class KiTS1(Dataset):
     """ KiTS Dataset """
-    # base_dir="../data/processed_v1_h5"
+    # base_dir should point to your processed HDF5 directory
     def __init__(self, base_dir=None, split='train',  num=None, transform=None):
         self._base_dir = base_dir
         self.transform = transform
@@ -57,7 +57,7 @@ class KiTS1(Dataset):
 
 class KiTS2(Dataset):
     """ KiTS Dataset """
-    # base_dir="../data/processed_v1_h5"
+    # base_dir should point to your processed HDF5 directory
     def __init__(self, base_dir=None, split='train',  num=None, transform=None):
         self._base_dir = base_dir
         self.transform = transform

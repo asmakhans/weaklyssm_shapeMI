@@ -5,8 +5,7 @@ from networks.vnet_sdf import VNet
 from test_util import test_all_case
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--root_path', type=str,
-                    default='../data/2018LA_Seg_Training Set', help='Name of Experiment')
+parser.add_argument('--root_path', type=str, required=True, help='Name of Experiment')
 parser.add_argument('--model', type=str,
                     default='DTC_16labels', help='model_name')
 parser.add_argument('--gpu', type=str,  default='1', help='GPU to use')

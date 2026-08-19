@@ -20,7 +20,7 @@ from utils import ramps, losses
 from dataloaders.la_heart import LAHeart, RandomCrop, ToTensor, TwoStreamBatchSampler
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--root_path', type=str, default='dataset_path', help='Name of Experiment')               # todo change dataset path
+parser.add_argument('--root_path', type=str, required=True, help='Name of Experiment')               # todo change dataset path
 parser.add_argument('--exp', type=str,  default="MCF_flod0", help='model_name')                               # todo model name
 parser.add_argument('--max_iterations', type=int,  default=6000, help='maximum epoch number to train')
 parser.add_argument('--batch_size', type=int, default=4, help='batch_size per gpu')

@@ -90,7 +90,9 @@ class LAHeart(Dataset):
     """ LA Dataset """
 
     def __init__(self, base_dir=None, split='train', num=None, transform=None, with_idx=False):
-        self._base_dir = "/home/sci/asmak/Documents/Methods/CAML/data/femur"
+        if base_dir is None:
+            raise ValueError("base_dir must be provided for LAHeart")
+        self._base_dir = base_dir
         print(self._base_dir)
         self.transform = transform
         self.sample_list = []

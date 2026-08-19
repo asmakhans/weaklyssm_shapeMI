@@ -61,28 +61,33 @@ def hd_loss(seg_soft, gt, gt_dtm=None, one_side=True, seg_dtm=None):
 
 
 
-def save_sdf(gt_path=None):
-    '''
-    generate SDM for gt segmentation
-    '''
+def save_sdf(gt_path, save_path=None):
+    """Generate a normalized positive signed-distance map for one NIfTI mask."""
     import nibabel as nib
-    dir_path = 'C:/Seolen/PycharmProjects/semi_seg/semantic-semi-supervised-master/model/gan_sdfloss3D_0229_04/test'
-    gt_path = dir_path + '/00_gt.nii.gz'
-    gt_img = nib.load(gt_path)
-    gt = gt_img.get_data().astype(np.uint8)
-    posmask = gt.astype(np.bool)
+    from pathlib import Path
+
+    gt_path = Path(gt_path).expanduser().resolve()
+    if save_path is None:
+        save_path = gt_path.with_name(gt_path.name.replace(".nii.gz", "_sdm_pos.nii.gz"))
+    else:
+        save_path = Path(save_path).expanduser().resolve()
+
+    gt_img = nib.load(str(gt_path))
+    gt = np.asanyarray(gt_img.dataobj).astype(np.uint8)
+    posmask = gt.astype(bool)
     negmask = ~posmask
     posdis = distance(posmask)
-    negdis = distance(negmask)
+    _ = distance(negmask)
     boundary = skimage_seg.find_boundaries(posmask, mode='inner').astype(np.uint8)
-    # sdf = (negdis - np.min(negdis)) / (np.max(negdis) - np.min(negdis)) - (posdis - np.min(posdis)) / ( np.max(posdis) - np.min(posdis))
-    sdf = (posdis - np.min(posdis)) / ( np.max(posdis) - np.min(posdis))
-    sdf[boundary==1] = 0
-    sdf = sdf.astype(np.float32)
+    denom = np.max(posdis) - np.min(posdis)
+    sdf = np.zeros_like(posdis, dtype=np.float32) if denom == 0 else (
+        (posdis - np.min(posdis)) / denom
+    ).astype(np.float32)
+    sdf[boundary == 1] = 0
 
-    sdf = nib.Nifti1Image(sdf, gt_img.affine)
-    save_path = dir_path + '/00_sdm_pos.nii.gz'
-    nib.save(sdf, save_path)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    nib.save(nib.Nifti1Image(sdf, gt_img.affine), str(save_path))
+    return save_path
 
 
 

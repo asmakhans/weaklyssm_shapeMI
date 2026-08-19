@@ -21,7 +21,7 @@ from utils import ramps, losses
 from dataloaders.la_heart import LAHeart, RandomCrop, CenterCrop, RandomRotFlip, ToTensor, TwoStreamBatchSampler, FemurDSet
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--root_path', type=str, default='data/', help='data load root path')
+parser.add_argument('--root_path', type=str, required=True, help='data load root path')
 parser.add_argument('--exp', type=str, default='namic', help='name of experiment')
 parser.add_argument('--dataset', type=str, default='namic', help='dataset to use')
 

@@ -24,7 +24,7 @@ from dataloaders.la_heart import LAHeart1,LAHeart2, LARandomCrop1,LARandomCrop2,
 from dataloaders.kits import KiTS1,KiTS2, KRandomCrop1,KRandomCrop2, KRandomRotFlip, ToTensor, TwoStreamBatchSampler
 from dataloaders.lits import LiTS1,LiTS2,LRandomCrop1,LRandomCrop2, LRandomRotFlip, ToTensor, TwoStreamBatchSampler
 parser = argparse.ArgumentParser()
-parser.add_argument('--root_path', type=str, default='../data/2018LA_Seg_Training Set/', help='Name of Experiment')
+parser.add_argument('--root_path', type=str, required=True, help='Name of Experiment')
 parser.add_argument('--exp', type=str,  default='UAMT_unlabel', help='model_name')
 parser.add_argument('--max_iterations', type=int,  default=6000, help='maximum epoch number to train')
 parser.add_argument('--batch_size', type=int, default=2, help='batch_size per gpu')
@@ -60,16 +60,14 @@ if args.deterministic:
     torch.cuda.manual_seed(args.seed)
 
 num_classes = 2
+train_data_path = os.path.abspath(os.path.expanduser(args.root_path))
 patch_size = (112, 112, 80)
 if args.dataset=="la":
     patch_size = (112, 112, 80)
-    train_data_path = "../data/LA"
 elif args.dataset=='kits_kidney':
     patch_size=(128,128,64)
-    train_data_path="../data/KiTS"
 elif args.dataset=='lits_liver':
     patch_size=(176,176,64)
-    train_data_path="../data/LiTS"
 
 
 def get_current_slice_weight(epoch):

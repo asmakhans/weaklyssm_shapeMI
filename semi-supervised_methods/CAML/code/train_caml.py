@@ -35,7 +35,7 @@ def sharpening(P):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset_name', type=str, default='namic', help='dataset_name')
-parser.add_argument('--root_path', type=str, default='/CAML/', help='Name of Dataset')
+parser.add_argument('--root_path', type=str, required=True, help='Name of Dataset')
 parser.add_argument('--exp', type=str, default='CAML', help='exp_name')
 parser.add_argument('--model', type=str, default='caml3d_v1', help='model_name')
 parser.add_argument('--max_iteration', type=int, default=15000, help='maximum iteration to train')
@@ -78,9 +78,8 @@ snapshot_path = "./model/further/namic_{}_{}_memory{}_feat{}_labeled_numfiltered
 num_classes = 2
 if args.dataset_name == "namic":
     patch_size = (112, 112, 80)
-    args.root_path = args.root_path + 'data/namic'
     args.max_samples = 40
-train_data_path = args.root_path
+train_data_path = os.path.abspath(os.path.expanduser(args.root_path))
 
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 labeled_bs = args.labeled_bs
@@ -290,7 +289,7 @@ if __name__ == "__main__":
                 model.eval()
                 if args.dataset_name == "namic":
                     dice_sample = test_patch.var_all_case(model, num_classes=num_classes, patch_size=patch_size,
-                                                          stride_xy=18, stride_z=4, dataset_name='namic')
+                                                          stride_xy=18, stride_z=4, dataset_name='namic', data_root=train_data_path)
                 # Notification!
                 # Here we just save the best result to perform performance comparison with some SOTA methods that
                 # report their best results during training obtained during training.

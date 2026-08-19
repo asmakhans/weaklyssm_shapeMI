@@ -28,7 +28,7 @@ from dataloaders.la_heart import LAHeart, RandomCrop, CenterCrop, RandomRotFlip,
 from utils.util import compute_sdf
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--root_path', type=str, default='../data/namic/', help='Name of Experiment')
+parser.add_argument('--root_path', type=str, required=True, help='Name of Experiment')
 parser.add_argument('--exp', type=str,  default='namic_10_percent', help='model_name')
 parser.add_argument('--max_iterations', type=int,  default=6000, help='maximum epoch number to train')
 parser.add_argument('--batch_size', type=int, default=4, help='batch_size per gpu')
@@ -114,7 +114,7 @@ if __name__ == "__main__":
                           ToTensor(),
                           ]))
 
-    labelnum = args.labelnum    
+    labelnum = args.labelnum
 
     labeled_idxs = list(range(labelnum))
     unlabeled_idxs = list(range(labelnum, 50))

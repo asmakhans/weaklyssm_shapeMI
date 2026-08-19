@@ -16,6 +16,7 @@ parser.add_argument('--idx', type=str, default='??')
 parser.add_argument('--open1', type=int, default=1)
 parser.add_argument('--close', type=int, default=1)
 parser.add_argument('--threshold', type=float, default=1)
+parser.add_argument('--data-root', type=str, required=True, help='Directory containing input HDF5 files')
 args = parser.parse_args()
 
 def h52dir(h5file,pseudolabeldir,gtnum,opentime,closetime,typeoftransform):
@@ -130,7 +131,7 @@ def dir2h5(h5file,pseudolabeldir,outh5file):
 
 logpath='reglog.txt'
 tic=time.time()
-list=glob('../data/LA/'+args.idx+'.h5')
+list=glob(os.path.join(os.path.abspath(os.path.expanduser(args.data_root)), args.idx + '.h5'))
 dice_list=[]
 for item in list:
     dice = 0

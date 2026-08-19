@@ -1,3 +1,4 @@
+import os
 import h5py
 import math
 import nibabel as nib
@@ -15,16 +16,31 @@ def getLargestCC(segmentation):
     return largestCC
 
 # change patch size accordingly
-def var_all_case(model, num_classes, patch_size=(128, 128, 96), stride_xy=18, stride_z=4, dataset_name="femur"):
-    if dataset_name == "femur":
-        with open('/home/sci/asmak/Documents/Methods/CAML/data/femur/test.list', 'r') as f:
-            image_list = f.readlines()
-        image_list = ["/home/sci/asmak/Documents/Methods/CAML/data/femur/" + item.replace('\n', '') + ".h5" for item in image_list]
+def var_all_case(model, num_classes, patch_size=(128, 128, 96), stride_xy=18, stride_z=4,
+                 dataset_name="namic", data_root=None, test_list=None):
+    """Validation helper using only caller-provided dataset locations."""
+    if data_root is None:
+        raise ValueError("data_root must be provided")
+    root = os.path.abspath(os.path.expanduser(data_root))
+    if test_list is None:
+        candidates = [
+            os.path.join(root, "test.list"),
+            os.path.join(root, "test_namic.txt"),
+        ]
+        test_list = next((path for path in candidates if os.path.exists(path)), None)
+    else:
+        test_list = os.path.abspath(os.path.expanduser(test_list))
+    if test_list is None or not os.path.exists(test_list):
+        raise FileNotFoundError("Could not locate a test split file; pass test_list explicitly")
+    with open(test_list, "r") as f:
+        cases = [line.strip() for line in f if line.strip()]
 
-    elif dataset_name == "Pancreas_CT":
-        with open('./data/Pancreas/test.list', 'r') as f:
-            image_list = f.readlines()
-        image_list = ["./data/Pancreas/Pancreas_h5/" + item.replace('\n', '') + "_norm.h5" for item in image_list]
+    if dataset_name == "Pancreas_CT":
+        image_root = os.path.join(root, "Pancreas_h5")
+        image_list = [os.path.join(image_root, case + "_norm.h5") for case in cases]
+    else:
+        image_list = [os.path.join(root, case + ".h5") for case in cases]
+
     loader = tqdm(image_list)
     total_dice = 0.0
     for image_path in loader:

@@ -1,261 +1,272 @@
-import shapeworks as sw
-import ShapeCohortGen
-import os
-import numpy as np
+#!/usr/bin/env python3
+"""Run fixed-domain ShapeWorks optimization on test segmentations.
+
+This is the second ShapeWorks stage used in both experimental strategies:
+
+* Strategy 1: ``--train-dir`` is the manual/ground-truth training SSM and
+  ``--test-dir`` contains semi-supervised test predictions.
+* Strategy 2: ``--train-dir`` is the SSM built from semi-supervised training
+  predictions and ``--test-dir`` contains predictions from the same method on
+  the held-out test set.
+
+The fixed training particles are used to initialize/anchor optimization of the
+new test subjects. No machine-specific paths are embedded in this script.
+"""
+
+from __future__ import annotations
+
 import argparse
-import os
-import glob
-import math
-import vtk
+import subprocess
+from pathlib import Path
+
 import numpy as np
-import matplotlib.tri as mtri
+import shapeworks as sw
 
 
-def get_particles(model_path):
-    f = open(model_path, "r")
-    data = []
-    for line in f.readlines():
-        points = line.split()
-        points = [float(i) for i in points]
-        data.append(points)
-    return(data)
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Add test segmentations to an existing training SSM using fixed domains."
+    )
+    parser.add_argument(
+        "--train-dir",
+        type=Path,
+        required=True,
+        help="Directory containing the previously built training SSM.",
+    )
+    parser.add_argument(
+        "--test-dir",
+        type=Path,
+        required=True,
+        help="Directory containing test segmentations (*.nii.gz).",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory for fixed-domain grooming/project outputs. Defaults to "
+            "--train-dir. Set this for Strategy 1 to reuse one manual training SSM "
+            "across multiple semi-supervised test predictions without overwriting results."
+        ),
+    )
+    parser.add_argument("--project-name", default="la")
+    parser.add_argument("--particles", type=int, default=1024)
 
-def findMeanShape(fileList, shapeModelDir):
-    for i in range(len(fileList)):
-        if i == 0:
-            meanShape = np.loadtxt(fileList[i])
-        else:
-            meanShape += np.loadtxt(fileList[i])
-    meanShape = meanShape / len(fileList)
-    nmMS = os.path.join(shapeModelDir, 'meanshape.particles')
-    np.savetxt(nmMS, meanShape)
+    parser.add_argument("--iso-value", type=float, default=0.5)
+    parser.add_argument("--antialias-iterations", type=int, default=30)
+    parser.add_argument("--isotropic-spacing", type=float, default=1.0)
+    parser.add_argument("--initial-pad", type=int, default=30)
+    parser.add_argument("--post-registration-pad", type=int, default=30)
+    parser.add_argument("--icp-iterations", type=int, default=200)
+    parser.add_argument("--gaussian-sigma", type=float, default=1.5)
 
-if __name__ == "__main__":
-    # janmesh:
-    # train_dir = "/home/sci/janmesh/Projects/original/ssm/femur_40/bcp"
-
-    # janmesh: 
-    # test_dir = "/home/sci/janmesh/Projects/original/ssm/femur_40/test"
-
-
-    # original
-    # train_dir = "/home/sci/asmak/Documents/Methods/ssm/run_as_is/20_exp/namic/mt"
-    # train_dir = "/home/sci/asmak/Documents/Methods/ssm/Ground_Truth/20_percent_gt"
-    #train_dir = "/home/sci/asmak/Documents/Methods/ssm/DeSCO/20_percent_namic/3SSM_DeSCO.training_DesCO.testing"
-
-    #test_dir = "/home/sci/asmak/Documents/Methods/DeSCO/model/prediction/original/namic_20_percent"
-    # gt:
-    # test_dir = "/home/sci/asmak/Documents/Methods/ssm/Ground_Truth/20_percent_gt/test"
-    # original:
-    # test_dir = "/home/sci/asmak/Documents/Methods/ssm/run_as_is/20_exp/namic/test"
-
-
-    # train_dir = "/home/sci/asmak/Documents/Methods/ssm/Ground_Truth/femur/40_percent_gt"
-    # test_dir = "/home/sci/asmak/Documents/Methods/ssm/Ground_Truth/femur/40_percent_gt/test_gt"
-
-    # setting I:
-    # train_dir = "/home/sci/asmak/Documents/Methods/ssm/Ground_Truth/femur/40_percent_gt/2SSM_gt.training.SASSnet.testing"
-    # test_dir = "/home/sci/asmak/Documents/Methods/SASSnet/model/femur_40_percent/test/pred"
-
-    # setting II:
-    train_dir = "/home/sci/asmak/Documents/Methods/weaklyssm/MT/20_percent_femur"
-    test_dir = "/home/sci/asmak/Documents/Methods/BCP/code/model/BCP/namic_20_percent_10_labeled/testing_predictions/pred"
-
-    train_file_list = glob.glob(os.path.join(train_dir, "*.nii.gz"))
-    test_file_list = glob.glob(os.path.join(test_dir, "*.nii.gz"))
-
-    spreadsheet_file_name = "la"
-
-
-    # Groom
-    train_groom_dir = os.path.join(train_dir, 'groomed')
-
-    test_groom_dir = os.path.join(train_dir, 'groomed_test')
-    if not os.path.exists(test_groom_dir):
-        os.makedirs(test_groom_dir)
-        
-    ref_seg = sw.Image(os.path.join(train_groom_dir, 'reference.nrrd'))
-    ## What is the reference image
-
-    train_groomed_files = glob.glob(os.path.join(train_groom_dir, "distance_transforms", "*.nrrd"))
-    train_groomed_files.sort()
+    parser.add_argument("--iterations-per-split", type=int, default=1000)
+    parser.add_argument("--optimization-iterations", type=int, default=500)
+    parser.add_argument("--starting-regularization", type=float, default=1000)
+    parser.add_argument("--ending-regularization", type=float, default=10)
+    parser.add_argument("--recompute-regularization-interval", type=int, default=2)
+    parser.add_argument(
+        "--procrustes",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Enable/disable Procrustes alignment during fixed-domain optimization.",
+    )
+    parser.add_argument(
+        "--run-optimize",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
+    parser.add_argument(
+        "--launch-studio",
+        action="store_true",
+        help="Open the generated fixed-domain project in ShapeWorksStudio.",
+    )
+    parser.add_argument(
+        "--keep-fixed-particles",
+        action="store_true",
+        help="Keep copies of fixed training particles in the fixed-domain output folder.",
+    )
+    return parser.parse_args()
 
 
-    model_dir = os.path.join(train_dir, "shape_models_1024", spreadsheet_file_name+"_particles")
-    world_particle_list = []
-    local_particle_list = []
-    for file in os.listdir(model_dir):
-        if "meanshape" in file:
-            continue
-        if "local" in file:
-            local_particle_list.append(os.path.join(model_dir, file))
-        if "world" in file:
-            world_particle_list.append(os.path.join(model_dir, file))
-
-    world_particle_list = sorted(world_particle_list)
-    local_particle_list = sorted(local_particle_list)
-
-    # sw.utils.findMeanShape(model_dir)
-    findMeanShape(local_particle_list, model_dir)
-    mean_shape_path = os.path.join(model_dir, 'meanshape.particles')
+def particle_files(model_dir: Path) -> tuple[list[Path], list[Path]]:
+    local = sorted(
+        p for p in model_dir.glob("*local*.particles") if "meanshape" not in p.name
+    )
+    world = sorted(
+        p for p in model_dir.glob("*world*.particles") if "meanshape" not in p.name
+    )
+    if not local:
+        raise FileNotFoundError(f"No local particle files found in {model_dir}")
+    return local, world
 
 
-    test_shape_seg_list = []
-    test_shape_names = []
-    for shape_filename in test_file_list:
-        print('Loading: ' + shape_filename)
-        shape_name = shape_filename.split('/')[-1].replace('.nii.gz', '')
-        test_shape_names.append(shape_name)
-        shape_seg = sw.Image(shape_filename)
-        test_shape_seg_list.append(shape_seg)
-
-        # do initial grooming steps
-        print("Grooming: " + shape_name)
-        iso_value = 0.5  # voxel value for isosurface
-        shape_seg.isolate()
-        bounding_box = sw.ImageUtils.boundingBox([shape_seg], iso_value).pad(2)
-        shape_seg.crop(bounding_box)
-        # Resample to isotropic spacing using linear interpolation
-        antialias_iterations = 30   # number of iterations for antialiasing
-        iso_spacing = [1, 1, 1]     # isotropic spacing
-        shape_seg.antialias(antialias_iterations).resample(iso_spacing, sw.InterpolationType.Linear).binarize()
-        # Pad segmentations with zeros
-        pad_size = 30    # number of voxels to pad for each dimension
-        pad_value = 0   # the constant value used to pad the segmentations
-        shape_seg.pad(pad_size, pad_value)
+def write_mean_shape(files: list[Path], destination: Path) -> Path:
+    arrays = [np.loadtxt(path) for path in files]
+    mean_shape = np.mean(np.stack(arrays, axis=0), axis=0)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    np.savetxt(destination, mean_shape)
+    return destination
 
 
-    """
-    Now we can loop over all of the segmentations again to find the rigid
-    alignment transform and compute a distance transform
-    """
+def main() -> None:
+    args = parse_args()
+    train_dir = args.train_dir.expanduser().resolve()
+    test_dir = args.test_dir.expanduser().resolve()
+    output_dir = (
+        args.output_dir.expanduser().resolve() if args.output_dir else train_dir
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
 
+    test_files = sorted(test_dir.glob("*.nii.gz"))
+    if not test_files:
+        raise FileNotFoundError(f"No .nii.gz test segmentations found in: {test_dir}")
 
-    test_rigid_transforms = [] # Save rigid transorm matrices
-    for shape_seg, shape_name in zip(test_shape_seg_list, test_shape_names):
-        # Get rigid transform
-        iso_value = 0.5      # voxel value for isosurface
-        icp_iterations = 100 # number of ICP iterations
-        shape_seg.isolate()
-        shape_seg.antialias(antialias_iterations)
-        rigidTransform = shape_seg.createRigidRegistrationTransform(ref_seg, iso_value, 200)
-        
-        shape_seg.applyTransform(rigidTransform,
-                                ref_seg.origin(),  ref_seg.dims(),
-                                ref_seg.spacing(), ref_seg.coordsys(),
-                                sw.InterpolationType.Linear)
-        shape_seg.binarize()
+    train_groom_dir = train_dir / "groomed"
+    reference_path = train_groom_dir / "reference.nrrd"
+    if not reference_path.exists():
+        raise FileNotFoundError(
+            f"Missing training reference image: {reference_path}. Run run_fd.py first."
+        )
+    ref_seg = sw.Image(str(reference_path))
 
-        bounding_box = sw.ImageUtils.boundingBox([shape_seg], iso_value).pad(2)
-        shape_seg.isolate()
-        shape_seg.crop(bounding_box).pad(30, 0)
+    train_groomed = sorted((train_groom_dir / "distance_transforms").glob("*.nrrd"))
+    model_dir = train_dir / f"shape_models_{args.particles}" / f"{args.project_name}_particles"
+    local_particles, world_particles = particle_files(model_dir)
 
-        # Convert segmentations to smooth signed distance transforms
-        print("Converting " + shape_name + " to distance transform")
-        iso_value = 0   # voxel value for isosurface
-        sigma = 1.5     # for Gaussian blur
-        
-        shape_seg.antialias(antialias_iterations).computeDT(iso_value).gaussianBlur(sigma)
+    if len(train_groomed) != len(local_particles):
+        raise RuntimeError(
+            "Training groomed-file count does not match local-particle count: "
+            f"{len(train_groomed)} vs {len(local_particles)}"
+        )
 
-    # Save distance transforms
-    test_groomed_files = sw.utils.save_images(os.path.join(test_groom_dir, 'distance_transforms/'), test_shape_seg_list,
-                                    test_shape_names, extension='nrrd', compressed=True, verbose=True)
+    mean_shape_path = write_mean_shape(local_particles, model_dir / "meanshape.particles")
 
+    test_groom_dir = output_dir / "groomed_test"
+    test_groom_dir.mkdir(parents=True, exist_ok=True)
+    spacing = [args.isotropic_spacing] * 3
 
+    test_segmentations: list[sw.Image] = []
+    test_names: list[str] = []
+    for shape_path in test_files:
+        shape_name = shape_path.name.removesuffix(".nii.gz")
+        print(f"Loading: {shape_path}")
+        shape = sw.Image(str(shape_path))
+        test_segmentations.append(shape)
+        test_names.append(shape_name)
 
+        print(f"Grooming: {shape_name}")
+        shape.isolate()
+        bbox = sw.ImageUtils.boundingBox([shape], args.iso_value).pad(2)
+        shape.crop(bbox)
+        shape.antialias(args.antialias_iterations).resample(
+            spacing, sw.InterpolationType.Linear
+        ).binarize()
+        shape.pad(args.initial_pad, 0)
+
+    for shape, shape_name in zip(test_segmentations, test_names):
+        shape.isolate()
+        shape.antialias(args.antialias_iterations)
+        rigid_transform = shape.createRigidRegistrationTransform(
+            ref_seg, args.iso_value, args.icp_iterations
+        )
+        shape.applyTransform(
+            rigid_transform,
+            ref_seg.origin(),
+            ref_seg.dims(),
+            ref_seg.spacing(),
+            ref_seg.coordsys(),
+            sw.InterpolationType.Linear,
+        )
+        shape.binarize()
+        bbox = sw.ImageUtils.boundingBox([shape], args.iso_value).pad(2)
+        shape.isolate()
+        shape.crop(bbox).pad(args.post_registration_pad, 0)
+
+        print(f"Converting {shape_name} to distance transform")
+        shape.antialias(args.antialias_iterations).computeDT(0).gaussianBlur(
+            args.gaussian_sigma
+        )
+
+    test_groomed = sw.utils.save_images(
+        str(test_groom_dir / "distance_transforms"),
+        test_segmentations,
+        test_names,
+        extension="nrrd",
+        compressed=True,
+        verbose=True,
+    )
 
     subjects = []
-    number_domains = 1
-
-    for i in range(len(train_file_list)):
+    for groomed_path, local_path in zip(train_groomed, local_particles):
         subject = sw.Subject()
-        subject.set_number_of_domains(number_domains)
-        rel_seg_files = [train_file_list[i]]#sw.utils.get_relative_paths([os.getcwd() + '/' + file_list[i]], project_location)
-        # subject.set_original_filenames(rel_seg_files)
-        rel_groom_files = [train_groomed_files[i]]#sw.utils.get_relative_paths([os.getcwd() + '/' + groomed_files[i]], project_location)
-        subject.set_groomed_filenames(rel_groom_files)
-        transform = [ np.eye(4).flatten() ]
-        # subject.set_groomed_transforms(transform)
-        subject.set_local_particle_filenames([local_particle_list[i]])
-        subject.set_world_particle_filenames([local_particle_list[i]])
+        subject.set_number_of_domains(1)
+        subject.set_groomed_filenames([str(groomed_path)])
+        subject.set_local_particle_filenames([str(local_path)])
+        # The original implementation intentionally used local particles for
+        # both local and world fixed particles after pre-alignment.
+        subject.set_world_particle_filenames([str(local_path)])
         subject.set_extra_values({"fixed": "yes"})
         subjects.append(subject)
 
-    for i in range(len(test_file_list)):
+    for original_path, groomed_path in zip(test_files, test_groomed):
         subject = sw.Subject()
-        subject.set_number_of_domains(number_domains)
-        rel_seg_files = [test_file_list[i]]#sw.utils.get_relative_paths([os.getcwd() + '/' + file_list[i]], project_location)
-        # subject.set_original_filenames(rel_seg_files)
-        rel_groom_files = [test_groomed_files[i]]#sw.utils.get_relative_paths([os.getcwd() + '/' + groomed_files[i]], project_location)
-        subject.set_groomed_filenames(rel_groom_files)
-        # transform = [test_rigid_transforms[i].flatten()]#[ np.eye(4).flatten() ]
-        # subject.set_groomed_transforms(transform)
-        subject.set_local_particle_filenames([mean_shape_path])
-        subject.set_world_particle_filenames([mean_shape_path])
+        subject.set_number_of_domains(1)
+        subject.set_original_filenames([str(original_path)])
+        subject.set_groomed_filenames([str(groomed_path)])
+        subject.set_local_particle_filenames([str(mean_shape_path)])
+        subject.set_world_particle_filenames([str(mean_shape_path)])
         subject.set_extra_values({"fixed": "no"})
         subjects.append(subject)
 
-        
-    
-    import subprocess
-    # Create project spreadsheet
-    project_location = os.path.join(train_dir, "shape_models_1024_fd")
-    if not os.path.exists(project_location):
-        os.makedirs(project_location)
-
-    # Set project
+    project_dir = output_dir / f"shape_models_{args.particles}_fd"
+    project_dir.mkdir(parents=True, exist_ok=True)
     project = sw.Project()
     project.set_subjects(subjects)
     parameters = sw.Parameters()
-
-    # Create a dictionary for all the parameters required by optimization
-
     parameter_dictionary = {
-        "number_of_particles" : 1024,
+        "number_of_particles": args.particles,
         "use_normals": 0,
-        "checkpointing_interval" : 200,
-        "keep_checkpoints" : 0,
-        "iterations_per_split" : 1000,
-        "optimization_iterations" : 1000,
-        "starting_regularization" : 1000,
-        "ending_regularization" : 1,
-        "recompute_regularization_interval" : 2,
-        "domains_per_shape" : 1,
-        "relative_weighting" : 1,
-        "initial_relative_weighting" : 0.05,
-        "save_init_splits" : 0,
-        "verbosity" : 1,
-        "procrustes" : 0,
+        "checkpointing_interval": 200,
+        "keep_checkpoints": 0,
+        "iterations_per_split": args.iterations_per_split,
+        "optimization_iterations": args.optimization_iterations,
+        "starting_regularization": args.starting_regularization,
+        "ending_regularization": args.ending_regularization,
+        "recompute_regularization_interval": args.recompute_regularization_interval,
+        "domains_per_shape": 1,
+        "relative_weighting": 1,
+        "initial_relative_weighting": 0.05,
+        "save_init_splits": 0,
+        "verbosity": 1,
+        "procrustes": int(args.procrustes),
         "use_fixed_subjects": 1,
         "narrow_band": 1e50,
     }
-
-    parameter_dictionary['use_normals'] = 0
-    parameter_dictionary['verbosity'] = 1
-    parameter_dictionary['narrow_band'] = 1e50
-
-    # Add param dictionary to spreadsheet
-    for key in parameter_dictionary:
-        parameters.set(key,sw.Variant([parameter_dictionary[key]]))
+    for key, value in parameter_dictionary.items():
+        parameters.set(key, sw.Variant([value]))
     parameters.set("domain_type", sw.Variant(1))
-    project.set_parameters("optimize",parameters)
-    spreadsheet_file = os.path.join(project_location, "la.xlsx")
-    project.save(spreadsheet_file)
+    project.set_parameters("optimize", parameters)
 
-    # analyze_cmd = ('ShapeWorksStudio ' + spreadsheet_file).split()
-    # subprocess.check_call(analyze_cmd)
+    spreadsheet = project_dir / f"{args.project_name}.xlsx"
+    project.save(str(spreadsheet))
+    print(f"Saved fixed-domain ShapeWorks project: {spreadsheet}")
 
-    # optimization should be not run here (somethings wrong, either this or worng path)
-    # # Run optimization
-    optimize_cmd = ('shapeworks optimize --name ' + spreadsheet_file).split()
-    subprocess.check_call(optimize_cmd)
-    
-    for i in range(len(world_particle_list)):
-       os.remove(world_particle_list[i].replace("shape_models_1024", "shape_models_1024_fd"))
-       os.remove(local_particle_list[i].replace("shape_models_1024", "shape_models_1024_fd"))
-    
+    if args.run_optimize:
+        subprocess.run(
+            ["shapeworks", "optimize", "--name", str(spreadsheet)], check=True
+        )
 
-    
+        if not args.keep_fixed_particles:
+            fd_particle_dir = project_dir / f"{args.project_name}_particles"
+            for src in local_particles + world_particles:
+                candidate = fd_particle_dir / src.name
+                if candidate.exists():
+                    candidate.unlink()
 
-    
-    
+    if args.launch_studio:
+        subprocess.run(["ShapeWorksStudio", str(spreadsheet)], check=True)
+
+
+if __name__ == "__main__":
+    main()

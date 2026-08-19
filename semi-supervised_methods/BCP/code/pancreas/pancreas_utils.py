@@ -20,7 +20,7 @@ def mkdir(path, level=2, create_self=True):
     level is how many parent folders should be created.
     create_self is whether create path(if it is a file, it should not be created)
 
-    e.g. : mkdir('/home/parent1/parent2/folder', level=3, create_self=False),
+    e.g. : mkdir('/path/to/parent1/parent2/folder', level=3, create_self=False),
     it will first create parent1, then parent2, then folder.
 
     :param path: string

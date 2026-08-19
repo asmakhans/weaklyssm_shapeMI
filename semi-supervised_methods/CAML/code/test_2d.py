@@ -15,7 +15,7 @@ from tqdm import tqdm
 from networks.net_factory import net_factory
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--root_path', type=str, default='./data/ACDC', help='Name of Experiment')
+parser.add_argument('--root_path', type=str, required=True, help='Name of Experiment')
 parser.add_argument('--exp', type=str, default='MCNet', help='experiment_name')
 parser.add_argument('--model', type=str, default='mcnet2d_v2', help='model_name')
 parser.add_argument('--num_classes', type=int,  default=4, help='output channel of network')

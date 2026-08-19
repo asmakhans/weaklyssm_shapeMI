@@ -9,6 +9,7 @@ from unittest import loader, result
 from yaml import load
 import torch
 import os
+import argparse
 import pdb
 import torch.nn as nn
 
@@ -19,12 +20,21 @@ from losses import DiceLoss, softmax_mse_loss, mix_loss
 from dataloaders import get_ema_model_and_dataloader
 
 """Global Variables"""
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+parser = argparse.ArgumentParser(description='BCP pancreas training')
+parser.add_argument('--data-root', required=True, help='Directory containing preprocessed HDF5 data')
+parser.add_argument('--data-list-root', required=True, help='Directory containing train/test split lists')
+parser.add_argument('--split-name', default='pancreas')
+parser.add_argument('--result-dir', default='result/cutmix')
+parser.add_argument('--gpu', default='0')
+cli_args = parser.parse_args()
+
+os.environ['CUDA_VISIBLE_DEVICES'] = cli_args.gpu
 seed_test = 2020
 seed_reproducer(seed = seed_test)
 
-data_root, split_name = '/home/ubuntu/byh/code/CoraNet-master/preprocess/data', 'pancreas'
-result_dir = 'result/cutmix/'
+data_root, split_name = cli_args.data_root, cli_args.split_name
+data_list_root = cli_args.data_list_root
+result_dir = cli_args.result_dir
 mkdir(result_dir)
 batch_size, lr = 2, 1e-3
 pretraining_epochs, self_training_epochs = 60, 200
@@ -189,7 +199,7 @@ def test_model(net, test_loader):
 
 if __name__ == '__main__':
     try:
-        net, ema_net, optimizer, lab_loader_a, lab_loader_b, unlab_loader_a, unlab_loader_b, test_loader = get_ema_model_and_dataloader(data_root, split_name, batch_size, lr, labelp=label_percent)
+        net, ema_net, optimizer, lab_loader_a, lab_loader_b, unlab_loader_a, unlab_loader_b, test_loader = get_ema_model_and_dataloader(data_root, split_name, batch_size, lr, labelp=label_percent, data_list_root=data_list_root)
         pretrain(net, optimizer, lab_loader_a, lab_loader_b, test_loader)
         ema_cutmix(net, ema_net, optimizer, lab_loader_a, lab_loader_b, unlab_loader_a, unlab_loader_b, test_loader)
         avg_metric, m_list = test_model(net, test_loader)

@@ -26,8 +26,7 @@ from dataloaders.la_heart import LAHeart, RandomCrop, CenterCrop, RandomRotFlip,
 from utils.util import compute_sdf
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--root_path', type=str,
-                    default='../data/2018LA_Seg_Training Set/', help='Name of Experiment')
+parser.add_argument('--root_path', type=str, required=True, help='Name of Experiment')
 parser.add_argument('--exp', type=str,
                     default='LA/DTC_with_consis_weight', help='model_name')
 parser.add_argument('--max_iterations', type=int,
@@ -246,7 +245,7 @@ if __name__ == "__main__":
                 grid_image = make_grid(image, 5, normalize=False)
                 writer.add_image('train/Groundtruth_DistMap',
                                  grid_image, iter_num)
-                
+
             # change lr
             if iter_num % 2500 == 0:
                 lr_ = base_lr * 0.1 ** (iter_num // 2500)

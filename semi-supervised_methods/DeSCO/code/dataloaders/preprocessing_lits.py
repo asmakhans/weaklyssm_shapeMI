@@ -1,3 +1,5 @@
+import argparse
+from pathlib import Path
 import nibabel as nib
 import numpy as np
 import matplotlib.pyplot as plt
@@ -170,48 +172,63 @@ def space_resampling(roiImg, new_spacing, lbl=False):
 
 
 
-loadPath = "../data/LiTS/raw/"
-savePath = "../data/LiTS/processed_" + v + "_h5/"
-if not os.path.exists(savePath):
-    os.makedirs(savePath)
+def parse_args():
+    parser = argparse.ArgumentParser(description="Preprocess LiTS volumes into HDF5 files.")
+    parser.add_argument(
+        "--load-path",
+        type=Path,
+        required=True,
+        help="LiTS raw-data root containing ct/ and seg/ directories.",
+    )
+    parser.add_argument(
+        "--save-path",
+        type=Path,
+        required=True,
+        help="Directory where processed HDF5 files will be written.",
+    )
+    return parser.parse_args()
+
 
 if __name__ == "__main__":
-    subpath = loadPath + "ct/"
-    subpath_lbl = loadPath + "seg/"
-    fileList = os.listdir(subpath)
-    for f in fileList:
-        ct = sitk.ReadImage(subpath + f)
-        lbl = sitk.ReadImage(subpath_lbl + "segmentation-" + f[7:])
+    args = parse_args()
+    load_path = args.load_path.expanduser().resolve()
+    save_path = args.save_path.expanduser().resolve()
+    save_path.mkdir(parents=True, exist_ok=True)
+
+    ct_dir = load_path / "ct"
+    label_dir = load_path / "seg"
+    for ct_path in sorted(ct_dir.iterdir()):
+        if not ct_path.is_file():
+            continue
+        label_path = label_dir / ("segmentation-" + ct_path.name[7:])
+        ct = sitk.ReadImage(str(ct_path))
+        lbl = sitk.ReadImage(str(label_path))
         ct_array = sitk.GetArrayFromImage(ct)
         lbl_array = sitk.GetArrayFromImage(lbl)
         new_ct_array = ct_array.copy()
         new_lbl_array = lbl_array.copy()
 
-        if CFG.do_windowing:    # ct
-            ct_array_w = transform_ctdata(new_ct_array, CFG.window_width, CFG.window_center, True)
-            new_ct_array = ct_array_w.copy()
+        if CFG.do_windowing:
+            new_ct_array = transform_ctdata(new_ct_array, CFG.window_width, CFG.window_center, True)
 
-        if CFG.do_background_cropping:      # ct
+        if CFG.do_background_cropping:
             ct_array_bgcrop = new_ct_array.copy()
             mask = new_ct_array.copy()
-            for i in range(ct_array_bgcrop.shape[0]):
-                mask[i], ct_array_bgcrop[i] = image_background_segmentation(ct_array_bgcrop[i], WW=CFG.cropping_center, WL=CFG.cropping_width, display=False)
+            for slice_index in range(ct_array_bgcrop.shape[0]):
+                mask[slice_index], ct_array_bgcrop[slice_index] = image_background_segmentation(
+                    ct_array_bgcrop[slice_index], WW=CFG.cropping_center, WL=CFG.cropping_width, display=False
+                )
             new_ct_array = ct_array_bgcrop.copy()
 
-        if CFG.do_cropping:         # ct, lbl
-            lbl_mask = mask.copy()
-            ct_array_crop = new_ct_array.copy()
-            lbl_array_crop = new_lbl_array.copy()
-            ct_array_crop = crop(lbl_mask, ct_array_crop)
-            lbl_array_crop = crop(lbl_mask, lbl_array_crop)
-            new_ct_array = ct_array_crop.copy()
-            new_lbl_array = lbl_array_crop.copy()
+        if CFG.do_cropping:
+            new_ct_array = crop(mask.copy(), new_ct_array.copy())
+            new_lbl_array = crop(mask.copy(), new_lbl_array.copy())
 
-        if CFG.do_mask_cropping:        # ct, lbl
-            ct_array_maskcrop = new_ct_array.copy()
-            lbl_array_maskcrop = new_lbl_array.copy()
-            startpostion, endpostion = getRangImageDepth(lbl_array_maskcrop)  # (75, 512, 512), 45, 73
-            new_ct_array, new_lbl_array = make_patch(ct_array_maskcrop, lbl_array_maskcrop, startpostion=startpostion, endpostion=endpostion)
+        if CFG.do_mask_cropping:
+            startpostion, endpostion = getRangImageDepth(new_lbl_array)
+            new_ct_array, new_lbl_array = make_patch(
+                new_ct_array.copy(), new_lbl_array.copy(), startpostion=startpostion, endpostion=endpostion
+            )
 
         new_ct = sitk.GetImageFromArray(new_ct_array)
         new_ct.SetOrigin(ct.GetOrigin())
@@ -228,16 +245,10 @@ if __name__ == "__main__":
         elif CFG.do_reshape:
             new_ct = resampling(new_ct, CFG.new_size, lbl=False)
             new_lbl = resampling(new_lbl, CFG.new_size, lbl=True)
+
         save_ct_array = sitk.GetArrayFromImage(new_ct)
         save_lbl_array = sitk.GetArrayFromImage(new_lbl)
-
-        # output shape
-        img_shape = save_ct_array.shape
-        lbl_shape = save_lbl_array.shape
-
-        # save
-        save_file = h5py.File(savePath + f[:-4] + ".h5", 'w')
-        save_file.create_dataset('image', data=save_ct_array)
-        save_file.create_dataset('label', data=save_lbl_array)
-        save_file.close()
-
+        output_name = ct_path.stem + ".h5"
+        with h5py.File(save_path / output_name, "w") as save_file:
+            save_file.create_dataset("image", data=save_ct_array)
+            save_file.create_dataset("label", data=save_lbl_array)

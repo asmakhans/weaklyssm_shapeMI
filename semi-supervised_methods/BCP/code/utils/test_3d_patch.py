@@ -18,11 +18,27 @@ def getLargestCC(segmentation):
         largestCC = segmentation
     return largestCC
 
-def var_all_case_LA(model, num_classes, patch_size=(112, 112, 80), stride_xy=18, stride_z=4):
-   
-    with open('/home/sci/janmesh/Projects/original/PLN_New/PLN/data/LA/test.list', 'r') as f:
-        image_list = f.readlines()
-    image_list = ["/home/sci/janmesh/Projects/original/PLN_New/PLN/data/LA/2018LA_Seg_Training Set/" + item.replace('\n', '') + "/mri_norm2.h5" for item in image_list]
+def _la_image_list(data_root, test_list=None):
+    """Resolve LA validation files from a caller-provided dataset root."""
+    root = os.path.abspath(os.path.expanduser(data_root))
+    list_path = os.path.abspath(os.path.expanduser(test_list)) if test_list else None
+    if list_path is None:
+        candidates = [os.path.join(root, "test.list"), os.path.join(os.path.dirname(root), "test.list")]
+        list_path = next((path for path in candidates if os.path.exists(path)), None)
+    if list_path is None or not os.path.exists(list_path):
+        raise FileNotFoundError("Could not locate test.list; pass test_list explicitly.")
+    volume_root = os.path.join(root, "2018LA_Seg_Training Set")
+    if not os.path.isdir(volume_root):
+        volume_root = root
+    with open(list_path, "r") as f:
+        cases = [item.strip() for item in f if item.strip()]
+    return [os.path.join(volume_root, case, "mri_norm2.h5") for case in cases]
+
+
+def var_all_case_LA(model, num_classes, patch_size=(112, 112, 80), stride_xy=18, stride_z=4, data_root=None, test_list=None):
+    if data_root is None:
+        raise ValueError("data_root must be provided for LA validation")
+    image_list = _la_image_list(data_root, test_list)
     loader = tqdm(image_list)
     total_dice = 0.0
     for image_path in loader:
@@ -164,11 +180,10 @@ def test_single_case(model, image, stride_xy, stride_z, patch_size, num_classes=
     return label_map, score_map
 
 
-def var_all_case_LA_plus(model_l, model_r, num_classes, patch_size=(112, 112, 80), stride_xy=18, stride_z=4):
-   
-    with open('/data/byh_data/SSNet_data/LA/test.list', 'r') as f:
-        image_list = f.readlines()
-    image_list = ["/data/byh_data/SSNet_data/LA/2018LA_Seg_Training Set/" + item.replace('\n', '') + "/mri_norm2.h5" for item in image_list]
+def var_all_case_LA_plus(model_l, model_r, num_classes, patch_size=(112, 112, 80), stride_xy=18, stride_z=4, data_root=None, test_list=None):
+    if data_root is None:
+        raise ValueError("data_root must be provided for LA validation")
+    image_list = _la_image_list(data_root, test_list)
     loader = tqdm(image_list)
     total_dice = 0.0
     for image_path in loader:

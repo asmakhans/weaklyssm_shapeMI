@@ -96,8 +96,10 @@ class LAHeart(Dataset):
         self.transform = transform
         self.sample_list = []
 
-        train_path = "/home/sci/janmesh/Projects/original/PLN_New/PLN/data/LA/train.list"#self._base_dir+'/train.list'
-        test_path = "/home/sci/janmesh/Projects/original/PLN_New/PLN/data/LA/test.list"#self._base_dir+'/test.list'
+        if self._base_dir is None:
+            raise ValueError("base_dir must be provided for LAHeart")
+        train_path = os.path.join(self._base_dir, "train.list")
+        test_path = os.path.join(self._base_dir, "test.list")
 
         if split=='train':
             with open(train_path, 'r') as f:

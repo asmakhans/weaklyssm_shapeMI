@@ -189,9 +189,16 @@ def test_calculate_metric(net, test_dataset, num_classes=2, dim=(96, 96, 96), s_
     net.eval()
     image_list = test_dataset.image_list
     if not pancreas:
-        with open('/home/ubuntu/byh/data/LA heart/' + '/../test.list', 'r') as f:
-            image_list = f.readlines()
-        image_list = image_list = ['/home/ubuntu/byh/data/LA heart/' +item.replace('\n', '')+"/mri_norm2.h5" for item in image_list]
+        data_root = getattr(test_dataset, '_base_dir', None)
+        if data_root is None:
+            raise ValueError('test_dataset._base_dir is required for non-pancreas evaluation')
+        list_candidates = [os.path.join(data_root, 'test.list'), os.path.join(os.path.dirname(data_root), 'test.list')]
+        list_path = next((p for p in list_candidates if os.path.exists(p)), None)
+        if list_path is None:
+            raise FileNotFoundError('Could not locate test.list for non-pancreas evaluation')
+        with open(list_path, 'r') as f:
+            cases = [line.strip() for line in f if line.strip()]
+        image_list = [os.path.join(data_root, case, 'mri_norm2.h5') for case in cases]
     avg_metric, m_list = test_all_case(net, image_list, num_classes=num_classes,
                                patch_size=dim, stride_xy=s_xy, stride_z=s_z,
                                save_result=False, test_save_path='./save', DTC=DTC, nms=nms)

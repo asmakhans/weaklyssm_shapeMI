@@ -30,7 +30,7 @@ from networks.net_factory import net_factory
 from utils.BCP_utils import context_mask, mix_loss, parameter_sharing, update_ema_variables
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--root_path', type=str, default='/home/sci/janmesh/Projects/original/PLN_New/PLN/data/LA/2018LA_Seg_Training Set', help='Name of Dataset')
+parser.add_argument('--root_path', type=str, required=True, help='Name of Dataset')
 parser.add_argument('--exp', type=str,  default='BCP', help='exp_name')
 parser.add_argument('--model', type=str, default='VNet', help='model_name')
 parser.add_argument('--pre_max_iteration', type=int,  default=2000, help='maximum pre-train iteration to train')
@@ -172,7 +172,7 @@ def pre_train(args, snapshot_path):
 
             if iter_num % 200 == 0:
                 model.eval()
-                dice_sample = test_3d_patch.var_all_case_LA(model, num_classes=num_classes, patch_size=patch_size, stride_xy=18, stride_z=4)
+                dice_sample = test_3d_patch.var_all_case_LA(model, num_classes=num_classes, patch_size=patch_size, stride_xy=18, stride_z=4, data_root=args.root_path)
                 if dice_sample > best_dice:
                     best_dice = round(dice_sample, 4)
                     save_mode_path = os.path.join(snapshot_path,  'iter_{}_dice_{}.pth'.format(iter_num, best_dice))
@@ -277,7 +277,7 @@ def self_train(args, pre_snapshot_path, self_snapshot_path):
 
             if iter_num % 200 == 0:
                 model.eval()
-                dice_sample = test_3d_patch.var_all_case_LA(model, num_classes=num_classes, patch_size=patch_size, stride_xy=18, stride_z=4)
+                dice_sample = test_3d_patch.var_all_case_LA(model, num_classes=num_classes, patch_size=patch_size, stride_xy=18, stride_z=4, data_root=args.root_path)
                 if dice_sample > best_dice:
                     best_dice = round(dice_sample, 4)
                     save_mode_path = os.path.join(self_snapshot_path,  'iter_{}_dice_{}.pth'.format(iter_num, best_dice))

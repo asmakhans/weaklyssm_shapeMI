@@ -31,7 +31,7 @@ from networks.net_factory import BCP_net, net_factory
 from utils import losses, ramps, feature_memory, contrastive_losses, val_2d
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--root_path', type=str, default='/data/byh_data/SSNet_data/ACDC', help='Name of Experiment')
+parser.add_argument('--root_path', type=str, required=True, help='Name of Experiment')
 parser.add_argument('--exp', type=str, default='BCP', help='experiment_name')
 parser.add_argument('--model', type=str, default='unet', help='model_name')
 parser.add_argument('--pre_iterations', type=int, default=10000, help='maximum epoch number to train')
