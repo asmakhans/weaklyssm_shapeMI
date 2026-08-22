@@ -408,7 +408,7 @@ If you use this benchmark, please cite the accompanying paper:
   journal={arXiv preprint arXiv:2407.15260},
   year={2024}
 }
-
+```
 Please also cite the original publication/codebase for each semi-supervised method you use. The method-specific READMEs contain the relevant upstream information where available.
 
 Disclaimer: README for this repository was formatted with the help of OpenAI's ChatGPT.
