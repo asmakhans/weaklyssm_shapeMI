@@ -401,7 +401,8 @@ See `PUBLIC_RELEASE_CHECKLIST.md` for a short final review checklist.
 
 If you use this benchmark, please cite the accompanying paper:
 
-> @article{khan2024viability,
+```bibtex
+@article{khan2024viability,
   title={On the Viability of Semi-Supervised Segmentation Methods for Statistical Shape Modeling},
   author={Khan, Asma and Kataria, Tushar and Ukey, Janmesh and Elhabian, Shireen Y},
   journal={arXiv preprint arXiv:2407.15260},
