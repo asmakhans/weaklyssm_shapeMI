@@ -401,11 +401,16 @@ See `PUBLIC_RELEASE_CHECKLIST.md` for a short final review checklist.
 
 If you use this benchmark, please cite the accompanying paper:
 
-> Asma Khan, Tushar Kataria, Janmesh Ukey, and Shireen Elhabian. **On the Viability of Semi-Supervised Segmentation Methods for Statistical Shape Modeling.**
+> @article{khan2024viability,
+  title={On the Viability of Semi-Supervised Segmentation Methods for Statistical Shape Modeling},
+  author={Khan, Asma and Kataria, Tushar and Ukey, Janmesh and Elhabian, Shireen Y},
+  journal={arXiv preprint arXiv:2407.15260},
+  year={2024}
+}
 
 Please also cite the original publication/codebase for each semi-supervised method you use. The method-specific READMEs contain the relevant upstream information where available.
 
-Disclaimer: README for this repository was formatted with the help of ChatGPT.
+Disclaimer: README for this repository was formatted with the help of OpenAI's ChatGPT.
 
 ## License
 
